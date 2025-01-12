@@ -1,0 +1,29 @@
+name: TMDB
+api_key: "6070ffb94d0df5ef40f5d28ab2bae29c"
+groupByURL:
+  - action: script
+    url:
+      - "themoviedb.org/movie/"
+      - "tmdb.org/movie/"
+      - "themoviedb.org/tv/"
+      - "tmdb.org/tv/"
+    script:
+      - |
+        function scrape(url) {
+          const apiKey = CONFIG.api_key;
+          if (!apiKey) {
+            throw new Error("TMDB API key not configured");
+          }
+          
+          // Create scraper instance
+          const scraper = new TMDBScraper(apiKey);
+          
+          // Determine if it's a movie or TV show URL
+          const isMovie = url.includes("/movie/");
+          
+          if (isMovie) {
+            return scraper.ScrapeMovieURL(url);
+          } else {
+            return scraper.ScrapeTVURL(url);
+          }
+        }

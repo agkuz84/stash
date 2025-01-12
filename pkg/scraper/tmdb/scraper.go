@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/stashapp/stash/pkg/logger"
 	"github.com/stashapp/stash/pkg/models"
@@ -20,7 +19,7 @@ func NewScraper(apiKey string) *Scraper {
 	}
 }
 
-// Movie scraping
+// ScrapeMovie tries to find movie information based on the name
 func (s *Scraper) ScrapeMovie(ctx context.Context, name string) (*models.ScrapedMovie, error) {
 	logger.Infof("Searching TMDB for movie: %s", name)
 
@@ -39,24 +38,61 @@ func (s *Scraper) ScrapeMovie(ctx context.Context, name string) (*models.Scraped
 		return nil, fmt.Errorf("failed to get movie details: %v", err)
 	}
 
-	return s.convertToScrapedMovie(details), nil
-}
+	// Convert to ScrapedMovie
+	scraped := &models.ScrapedMovie{}
 
-func (s *Scraper) ScrapeMovieURL(ctx context.Context, url string) (*models.ScrapedMovie, error) {
-	movieID, err := extractIDFromURL(url)
-	if err != nil {
-		return nil, err
+	// Set basic information
+	scraped.Name = &movie.Title
+	scraped.Date = &movie.ReleaseDate
+	scraped.Synopsis = &movie.Overview
+
+	// Handle Rating
+	if movie.VoteAverage > 0 {
+		rating := strconv.FormatFloat(movie.VoteAverage, 'f', 2, 64)
+		scraped.Rating = &rating
 	}
 
-	details, err := s.client.GetMovieDetails(movieID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get movie details: %v", err)
+	// Handle image
+	if movie.PosterPath != "" {
+		posterURL := s.client.GetImageURL(movie.PosterPath)
+		scraped.FrontImage = &posterURL
 	}
 
-	return s.convertToScrapedMovie(details), nil
+	// Handle tags (genres)
+	var tags []*models.ScrapedTag
+	for _, genre := range details.Genres {
+		tags = append(tags, &models.ScrapedTag{
+			Name: genre.Name,
+		})
+	}
+	if len(tags) > 0 {
+		scraped.Tags = tags
+	}
+
+	// Handle duration if available
+	if details.Runtime > 0 {
+		duration := strconv.Itoa(details.Runtime)
+		scraped.Duration = &duration
+	}
+
+	// Handle director
+	for _, crew := range details.Credits.Crew {
+		if crew.Job == "Director" {
+			scraped.Director = &crew.Name
+			break
+		}
+	}
+
+	// Handle URLs
+	if movie.ID > 0 {
+		movieURL := fmt.Sprintf("https://www.themoviedb.org/movie/%d", movie.ID)
+		scraped.URLs = []string{movieURL}
+	}
+
+	return scraped, nil
 }
 
-// TV Show scraping
+// ScrapeTV converts a TV show to the movie format that Stash expects
 func (s *Scraper) ScrapeTV(ctx context.Context, name string) (*models.ScrapedMovie, error) {
 	logger.Infof("Searching TMDB for TV show: %s", name)
 
@@ -75,128 +111,42 @@ func (s *Scraper) ScrapeTV(ctx context.Context, name string) (*models.ScrapedMov
 		return nil, fmt.Errorf("failed to get TV show details: %v", err)
 	}
 
-	return s.convertToScrapedTV(details), nil
-}
+	// Convert to ScrapedMovie
+	scraped := &models.ScrapedMovie{}
 
-func (s *Scraper) ScrapeTVURL(ctx context.Context, url string) (*models.ScrapedMovie, error) {
-	tvID, err := extractIDFromURL(url)
-	if err != nil {
-		return nil, err
+	// Set basic information
+	scraped.Name = &show.Name
+	scraped.Date = &show.FirstAirDate
+	scraped.Synopsis = &show.Overview
+
+	// Handle Rating
+	if show.VoteAverage > 0 {
+		rating := strconv.FormatFloat(show.VoteAverage, 'f', 2, 64)
+		scraped.Rating = &rating
 	}
 
-	details, err := s.client.GetTVShowDetails(tvID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get TV show details: %v", err)
+	// Handle image
+	if show.PosterPath != "" {
+		posterURL := s.client.GetImageURL(show.PosterPath)
+		scraped.FrontImage = &posterURL
 	}
 
-	return s.convertToScrapedTV(details), nil
-}
-
-// Helper functions
-func (s *Scraper) convertToScrapedMovie(details *MovieDetails) *models.ScrapedMovie {
-	scrapedMovie := &models.ScrapedMovie{
-		Name:     &details.Title,
-		Date:     &details.ReleaseDate,
-		Synopsis: &details.Overview,
-	}
-
-	if details.PosterPath != "" {
-		posterURL := s.client.GetImageURL(details.PosterPath)
-		scrapedMovie.FrontImage = &posterURL
-	}
-
-	// Add genres as tags
-	var tags []string
+	// Handle tags (genres)
+	var tags []*models.ScrapedTag
 	for _, genre := range details.Genres {
-		tags = append(tags, genre.Name)
-	}
-	if len(tags) > 0 {
-		scrapedMovie.Tags = &models.ScrapedTags{Values: tags}
-	}
-
-	// Add cast and crew
-	var performers []models.ScrapedPerformer
-	for _, cast := range details.Credits.Cast {
-		name := cast.Name
-		role := cast.Character
-		performers = append(performers, models.ScrapedPerformer{
-			Name:  &name,
-			Notes: &role,
+		tags = append(tags, &models.ScrapedTag{
+			Name: genre.Name,
 		})
 	}
-	if len(performers) > 0 {
-		scrapedMovie.Performers = &performers
-	}
-
-	// Add director
-	for _, crew := range details.Credits.Crew {
-		if crew.Job == "Director" {
-			director := crew.Name
-			scrapedMovie.Director = &director
-			break
-		}
-	}
-
-	return scrapedMovie
-}
-
-func (s *Scraper) convertToScrapedTV(details *TVShowDetails) *models.ScrapedMovie {
-	scrapedTV := &models.ScrapedMovie{
-		Name:     &details.Name,
-		Date:     &details.FirstAirDate,
-		Synopsis: &details.Overview,
-	}
-
-	if details.PosterPath != "" {
-		posterURL := s.client.GetImageURL(details.PosterPath)
-		scrapedTV.FrontImage = &posterURL
-	}
-
-	// Add genres as tags
-	var tags []string
-	for _, genre := range details.Genres {
-		tags = append(tags, genre.Name)
-	}
 	if len(tags) > 0 {
-		scrapedTV.Tags = &models.ScrapedTags{Values: tags}
+		scraped.Tags = tags
 	}
 
-	// Add cast and crew
-	var performers []models.ScrapedPerformer
-	for _, cast := range details.Credits.Cast {
-		name := cast.Name
-		role := cast.Character
-		performers = append(performers, models.ScrapedPerformer{
-			Name:  &name,
-			Notes: &role,
-		})
-	}
-	if len(performers) > 0 {
-		scrapedTV.Performers = &performers
+	// Handle URLs
+	if show.ID > 0 {
+		showURL := fmt.Sprintf("https://www.themoviedb.org/tv/%d", show.ID)
+		scraped.URLs = []string{showURL}
 	}
 
-	return scrapedTV
-}
-
-func extractIDFromURL(url string) (int, error) {
-	parts := strings.Split(url, "/")
-	if len(parts) == 0 {
-		return 0, fmt.Errorf("invalid URL format")
-	}
-
-	// Get the last part of the URL and convert to int
-	idStr := parts[len(parts)-1]
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid ID in URL")
-	}
-
-	return id, nil
-}
-
-func (s *Scraper) SupportedScrapes() []models.ScrapeType {
-	return []models.ScrapeType{
-		models.ScrapeTypeMovie,
-		models.ScrapeTypeScene, // For TV episodes
-	}
+	return scraped, nil
 }
