@@ -5,6 +5,7 @@ import { LibraryTasks } from "./LibraryTasks";
 import { DataManagementTasks } from "./DataManagementTasks";
 import { PluginTasks } from "./PluginTasks";
 import { JobTable } from "./JobTable";
+import { VHSReelTasks } from "./VHSReelTasks";
 
 export const SettingsTasksPanel: React.FC = () => {
   const intl = useIntl();
@@ -38,6 +39,7 @@ export const SettingsTasksPanel: React.FC = () => {
 
       <div className="tasks-panel-tasks">
         <LibraryTasks />
+        <VHSReelTasks />  {/* Add this line */}
         <hr />
         <DataManagementTasks
           setIsBackupRunning={setIsBackupRunning}

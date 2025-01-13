@@ -1,0 +1,10 @@
+type VHSReel {
+    id: ID!
+}
+
+extend type Mutation {
+    """
+    Generates 5-second clips for all scene markers
+    """
+    generateVHSClips: Boolean!
+}

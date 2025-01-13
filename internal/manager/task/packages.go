@@ -25,6 +25,16 @@ func (j *PackagesJob) installPackage(ctx context.Context, p models.PackageSpecIn
 	return nil
 }
 
+type generateVHSTask interface {
+	Start(ctx context.Context)
+}
+
+// Update the TaskBuilder interface to include our new task
+type TaskBuilder interface {
+	// ... existing tasks ...
+	GetGenerateVHSClips() generateVHSTask
+}
+
 type InstallPackagesJob struct {
 	PackagesJob
 	Packages []*models.PackageSpecInput
