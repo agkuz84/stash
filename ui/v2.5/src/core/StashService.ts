@@ -20,6 +20,24 @@ import { useEffect, useState } from "react";
 
 const { client, wsClient, cache: clientCache } = createClient();
 
+const GENERATE_VHS_CLIPS = gql`
+  mutation GenerateVHSClips {
+    generateVHSClips
+  }
+`;
+
+export const mutateGenerateVHSClips = () =>
+  client.mutate<GQL.GenerateVHSClipsMutation>({
+    mutation: GENERATE_VHS_CLIPS,
+    update(cache, result) {
+      if (!result.data?.generateVHSClips) return;
+      
+      evictQueries(cache, [
+        GQL.FindScenesDocument, // in case we need to refresh scenes
+      ]);
+    },
+  });
+
 export const getClient = () => client;
 export const getWSClient = () => wsClient;
 

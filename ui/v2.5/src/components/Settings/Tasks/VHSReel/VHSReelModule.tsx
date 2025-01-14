@@ -1,9 +1,10 @@
-import React from 'react';
-import { Button } from 'src/components/Shared/Button';
-import { Icon } from 'src/components/Shared/Icon';
-import { LoadingIndicator } from 'src/components/Shared/LoadingIndicator';
-import { useToast } from 'src/hooks/Toast';
-import { mutateGenerateVHSClips } from 'src/core/StashService';
+import React from "react";
+import { Button } from "react-bootstrap";
+import { FormattedMessage } from "react-intl";
+import { Icon } from "../../../../components/Shared/Icon";
+import { LoadingIndicator } from "../../../../components/Shared/LoadingIndicator";
+import { useToast } from "../../../../hooks/Toast";
+import { mutateGenerateVHSClips } from "../../../../core/StashService";
 
 const VHSReelModule = () => {
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -29,12 +30,13 @@ const VHSReelModule = () => {
         <div>
           <h3>Generate VHS Clips</h3>
           <div className="sub-heading">
-            Creates 5-second clips for each marker in your library.
-            Required for VHS Reel playback.
+            <FormattedMessage id="Creates 5-second clips for each marker in your library." />
+            <FormattedMessage id="Required for VHS Reel playback." />
           </div>
         </div>
         <div>
           <Button
+            variant="secondary"
             onClick={() => generateClips()}
             disabled={isGenerating}
           >
@@ -43,7 +45,7 @@ const VHSReelModule = () => {
             ) : (
               <>
                 <Icon icon="tasks" />
-                <span>Generate</span>
+                <span><FormattedMessage id="Generate" /></span>
               </>
             )}
           </Button>
