@@ -4,7 +4,7 @@ type VHSReel {
 
 extend type Mutation {
     """
-    Generates 5-second clips for all scene markers
+    Generates 5-second video clips from all markers in the library
     """
     generateVHSClips: Boolean!
 }

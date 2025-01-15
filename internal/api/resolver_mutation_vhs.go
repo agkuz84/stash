@@ -7,10 +7,6 @@ import (
 )
 
 func (r *mutationResolver) GenerateVHSClips(ctx context.Context) (bool, error) {
-	job := &manager.GenerateVHSClipsJob{
-		BaseJob: manager.BaseJob{},
-	}
-
-	manager.GetInstance().JobManager.Add(ctx, job)
+	manager.GetInstance().GenerateVHSClips(ctx)
 	return true, nil
 }
