@@ -5,6 +5,7 @@ COPY . .
 RUN apk add --no-cache git
 WORKDIR /stash/ui/v2.5
 RUN yarn install
+RUN yarn add @apollo/client graphql
 RUN yarn gqlgen
 RUN yarn build
 
